@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-graphite text-ink font-body;
+}
+
+/* Visible keyboard focus, kept even with custom styling */
+:focus-visible {
+  outline: 2px solid theme("colors.signal");
+  outline-offset: 2px;
+}
+
+::selection {
+  background: theme("colors.signal");
+  color: theme("colors.graphite");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
