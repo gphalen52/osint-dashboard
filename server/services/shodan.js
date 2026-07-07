@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 
 /**
  * Queries Shodan's Host Lookup API for a given IP address.
- * Requires SHODAN_API_KEY in .env (free tier works).
+d * Requires SHODAN_API_KEY in .env (free tier works)
  */
 export async function lookupShodan(ip) {
   const apiKey = process.env.SHODAN_API_KEY;
