@@ -6,8 +6,12 @@ import dns from "node:dns/promises";
 
 import crtshRouter from "./routes/crtsh.js";
 import shodanRouter from "./routes/shodan.js";
+import greynoiseRouter from "./routes/greynoise.js";
+import virustotalRouter from "./routes/virustotal.js";
 import { lookupCrtSh } from "./services/crtsh.js";
 import { lookupShodan } from "./services/shodan.js";
+import { lookupGreyNoise } from "./services/greynoise.js";
+import { lookupVirusTotal } from "./services/virustotal.js";
 
 dotenv.config();
 
@@ -33,6 +37,8 @@ app.use("/api", limiter);
 
 app.use("/api/crtsh", crtshRouter);
 app.use("/api/shodan", shodanRouter);
+app.use("/api/greynoise", greynoiseRouter);
+app.use("/api/virustotal", virustotalRouter);
 
 /**
  * Correlation endpoint: the "one search triggers a chain of lookups" feature.
@@ -46,7 +52,8 @@ app.get("/api/investigate/:domain", async (req, res) => {
   const { domain } = req.params;
   const results = { domain, sources: [] };
 
-  // Subdomain enumeration never blocks on DNS/Shodan failing
+  // Subdomain enumeration and VirusTotal both key off the domain directly,
+  // so neither depends on DNS resolution succeeding.
   try {
     const crtshResult = await lookupCrtSh(domain);
     results.sources.push(crtshResult);
@@ -58,7 +65,18 @@ app.get("/api/investigate/:domain", async (req, res) => {
     });
   }
 
-  // Resolve domain -> IP, then chain into Shodan
+  try {
+    const virustotalResult = await lookupVirusTotal(domain);
+    results.sources.push(virustotalResult);
+  } catch (err) {
+    results.sources.push({
+      source: "virustotal",
+      status: "error",
+      error: err.message,
+    });
+  }
+
+  // Resolve domain -> IP, then chain into Shodan + GreyNoise
   try {
     const addresses = await dns.resolve4(domain);
     const resolvedIp = addresses[0];
@@ -66,6 +84,9 @@ app.get("/api/investigate/:domain", async (req, res) => {
 
     const shodanResult = await lookupShodan(resolvedIp);
     results.sources.push(shodanResult);
+
+    const greynoiseResult = await lookupGreyNoise(resolvedIp);
+    results.sources.push(greynoiseResult);
   } catch (err) {
     results.sources.push({
       source: "shodan",
